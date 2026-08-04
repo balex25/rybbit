@@ -96,7 +96,7 @@ function SidebarContent() {
             icon={<File className="w-4 h-4" />}
           />
         )}
-        {IS_CLOUD && !isMobileSite && (
+        {!isMobileSite && (
           <SidebarComponents.Item
             label={t("Performance")}
             active={isActiveTab("performance")}
