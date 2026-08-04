@@ -35,7 +35,7 @@ import { useGetSite } from "../../api/admin/hooks/useSites";
 import { useUserOrganizations } from "../../api/admin/hooks/useOrganizations";
 import { useGetSitesFromOrg } from "../../api/admin/hooks/useSites";
 import { SiteResponse, updateSiteConfig } from "../../api/admin/endpoints";
-import { IS_CLOUD } from "../../lib/const";
+import { useConfigs } from "../../lib/configs";
 
 interface SiteSettingsProps {
   siteId: number;
@@ -102,6 +102,7 @@ function SiteSettingsInner({
   initialOpen?: boolean;
 }) {
   const t = useExtracted();
+  const { configs } = useConfigs();
   const { data: session } = authClient.useSession();
   const { data: userOrganizationsData } = useUserOrganizations();
   const siteOrgMembership = userOrganizationsData?.find(org => org.id === siteMetadata.organizationId);
@@ -153,7 +154,7 @@ function SiteSettingsInner({
     { key: "general", label: t("General"), icon: Settings },
     { key: "tracking", label: t("Tracking"), icon: SlidersHorizontal },
     { key: "exclusions", label: t("Exclusions"), icon: Ban },
-    { key: "integrations", label: t("Integrations"), icon: Plug, hidden: !IS_CLOUD },
+    { key: "integrations", label: t("Integrations"), icon: Plug, hidden: !configs?.gscEnabled },
     { key: "script", label: isMobileSite ? t("React Native SDK") : t("Tracking Script"), icon: Code },
     { key: "widget-embeds", label: t("Widget Embeds"), icon: LayoutTemplate },
     { key: "dashboard-embed", label: t("Dashboard Embed"), icon: LayoutDashboard },
@@ -238,7 +239,7 @@ function SiteSettingsInner({
                 />
               )}
               {activeTab === "exclusions" && <ExclusionsTab siteId={siteMetadata.siteId} disabled={disabled} />}
-              {activeTab === "integrations" && IS_CLOUD && (
+              {activeTab === "integrations" && configs?.gscEnabled && (
                 <IntegrationsTab disabled={disabled} siteId={siteMetadata.siteId} />
               )}
               {activeTab === "script" && (
