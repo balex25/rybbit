@@ -9,7 +9,6 @@ import { useExtracted } from "next-intl";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
-import { RybbitTextLogo } from "../../components/RybbitLogo";
 import { SpinningGlobe } from "../../components/SpinningGlobe";
 import { useSetPageTitle } from "../../hooks/useSetPageTitle";
 import { authClient } from "../../lib/auth";
@@ -80,12 +79,6 @@ function LoginPage() {
     <div className="flex h-dvh w-full">
       {/* Left panel - login form */}
       <div className="w-full lg:w-[550px] flex flex-col p-6 lg:p-10">
-        {/* Logo at top left */}
-        <div className="mb-8">
-          <a href="https://rybbit.com" target="_blank" className="inline-block">
-            <RybbitTextLogo />
-          </a>
-        </div>
         <div className="flex-1 flex flex-col justify-center w-full max-w-[550px] mx-auto">
           <h1 className="text-lg text-neutral-600 dark:text-neutral-300 mb-6">{t("Welcome back")}</h1>
           <div className="flex flex-col gap-4">
@@ -140,7 +133,7 @@ function LoginPage() {
               </div>
             </form>
 
-            {(!configs?.disableSignup || !isLoadingConfigs) && (
+            {!isLoadingConfigs && configs?.disableSignup === false && (
               <div className="text-center text-sm">
                 {t("Don't have an account?")}{" "}
                 <Link
@@ -153,19 +146,6 @@ function LoginPage() {
             )}
           </div>
         </div>
-
-        {!IS_CLOUD && (
-          <div className="text-xs text-muted-foreground mt-8">
-            <a
-              href="https://rybbit.com"
-              target="_blank"
-              rel="noopener"
-              title="Rybbit - Open Source Privacy-Focused Web Analytics"
-            >
-              {t("Open source web analytics powered by Rybbit")}
-            </a>
-          </div>
-        )}
       </div>
 
       {/* Right panel - globe (hidden on mobile/tablet) */}
