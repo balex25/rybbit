@@ -6,6 +6,7 @@ import {
   GOOGLE_CLIENT_SECRET,
   LITE_DASHBOARD,
   MAPBOX_TOKEN,
+  TURNSTILE_CONFIG,
 } from "../lib/const.js";
 
 const require = createRequire(import.meta.url);
@@ -13,6 +14,7 @@ const { version } = require("../../package.json");
 
 export async function getConfig(_: FastifyRequest, reply: FastifyReply) {
   return reply.send({
+    turnstileSiteKey: TURNSTILE_CONFIG?.siteKey ?? null,
     disableSignup: DISABLE_SIGNUP,
     mapboxToken: MAPBOX_TOKEN,
     liteDashboard: LITE_DASHBOARD,

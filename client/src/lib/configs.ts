@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { authedFetch } from "../api/utils";
 
 interface Configs {
+  turnstileSiteKey: string | null;
   disableSignup: boolean;
   mapboxToken: string;
   liteDashboard: boolean;

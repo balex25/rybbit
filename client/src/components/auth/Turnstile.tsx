@@ -3,6 +3,7 @@
 import { Turnstile as CloudflareTurnstile, TurnstileInstance } from "@marsidev/react-turnstile";
 import { useTheme } from "next-themes";
 import { useRef } from "react";
+import { useConfigs } from "@/lib/configs";
 
 interface TurnstileProps {
   onSuccess: (token: string) => void;
@@ -13,11 +14,11 @@ interface TurnstileProps {
 
 export function Turnstile({ onSuccess, onError, onExpire, className = "" }: TurnstileProps) {
   const turnstileRef = useRef<TurnstileInstance>(null);
-  const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+  const { configs } = useConfigs();
+  const siteKey = configs?.turnstileSiteKey;
   const { theme } = useTheme();
 
   if (!siteKey) {
-    console.error("NEXT_PUBLIC_TURNSTILE_SITE_KEY is not defined");
     return null;
   }
 

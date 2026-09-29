@@ -1,6 +1,6 @@
 import { betterAuth } from "better-auth";
 import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
-import { admin, captcha, emailOTP, organization } from "better-auth/plugins";
+import { admin, emailOTP, organization } from "better-auth/plugins";
 import { createAccessControl } from "better-auth/plugins/access";
 import { adminAc, defaultStatements, memberAc, ownerAc } from "better-auth/plugins/organization/access";
 import { createOAuthPlugins, getAuthBaseUrl } from "./oauth.js";
@@ -8,7 +8,7 @@ import dotenv from "dotenv";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import pg from "pg";
 import { dash } from "@better-auth/infra";
-import { apiKey } from "@better-auth/api-key"
+import { apiKey } from "@better-auth/api-key";
 
 import { db } from "../db/postgres/postgres.js";
 import * as schema from "../db/postgres/schema.js";
@@ -17,7 +17,8 @@ import { siteIdsInOrganization } from "./access.js";
 import { apiKeyLimitForPlan, countApiKeysForReference } from "./apiKeyLimits.js";
 import { invalidateSitesAccessCache } from "./auth-utils.js";
 import { ORG_API_KEY_CONFIG_ID } from "./bearerAuth.js";
-import { DISABLE_SIGNUP, IS_CLOUD } from "./const.js";
+import { createTurnstilePlugin } from "./turnstile.js";
+import { DISABLE_SIGNUP, IS_CLOUD, TURNSTILE_CONFIG } from "./const.js";
 import {
   addContactToAudience,
   sendChangeEmailVerification,
@@ -224,15 +225,7 @@ const pluginList = [
       await sendOtpEmail(email, otp, type);
     },
   }),
-  // Add Cloudflare Turnstile captcha (cloud only)
-  ...(IS_CLOUD && process.env.TURNSTILE_SECRET_KEY && process.env.NODE_ENV === "production"
-    ? [
-      captcha({
-        provider: "cloudflare-turnstile",
-        secretKey: process.env.TURNSTILE_SECRET_KEY,
-      }),
-    ]
-    : []),
+  ...(TURNSTILE_CONFIG ? [createTurnstilePlugin(TURNSTILE_CONFIG)] : []),
 ];
 
 export const auth = betterAuth({
@@ -260,14 +253,7 @@ export const auth = betterAuth({
     disableSignUp: DISABLE_SIGNUP,
   },
   emailVerification: {
-    sendVerificationEmail: async ({
-      user,
-      url,
-    }: {
-      user: { email: string };
-      url: string;
-      token: string;
-    }) => {
+    sendVerificationEmail: async ({ user, url }: { user: { email: string }; url: string; token: string }) => {
       await sendEmailVerificationLink(user.email, url);
     },
   },
@@ -378,7 +364,7 @@ export const auth = betterAuth({
     },
   },
   hooks: {
-    before: createAuthMiddleware(async (ctx) => {
+    before: createAuthMiddleware(async ctx => {
       // Gate API key creation on better-auth's own /api-key/create route. This
       // is the only choke point that covers direct client calls — the Fastify
       // endpoints (createUserApiKey / createOrgApiKey) do richer plan checks

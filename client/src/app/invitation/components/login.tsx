@@ -1,5 +1,8 @@
 "use client";
 
+import { useTurnstile } from "@/hooks/useTurnstile";
+import { Turnstile } from "@/components/auth/Turnstile";
+
 import { useExtracted } from "next-intl";
 import { useState } from "react";
 import { authClient } from "../../../lib/auth";
@@ -15,6 +18,8 @@ interface LoginProps {
 
 export function Login({ callbackURL }: LoginProps) {
   const t = useExtracted();
+  const { turnstileToken, setTurnstileToken, turnstileResetKey, turnstileEnabled, turnstilePending, resetTurnstile } =
+    useTurnstile();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>("");
   const [email, setEmail] = useState("");
@@ -25,11 +30,24 @@ export function Login({ callbackURL }: LoginProps) {
     setIsLoading(true);
     setError("");
 
+    if (turnstilePending || (turnstileEnabled && !turnstileToken)) {
+      setError(t("Please complete the captcha verification"));
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      const { data, error } = await authClient.signIn.email({
-        email,
-        password,
-      });
+      const { data, error } = await authClient.signIn.email(
+        {
+          email,
+          password,
+        },
+        {
+          onRequest: context => {
+            if (turnstileEnabled && turnstileToken) context.headers.set("x-captcha-response", turnstileToken);
+          },
+        }
+      );
 
       if (data?.user) {
         userStore.setState({
@@ -45,6 +63,7 @@ export function Login({ callbackURL }: LoginProps) {
     } catch (error) {
       setError(String(error));
     } finally {
+      resetTurnstile();
       setIsLoading(false);
     }
   };
@@ -71,7 +90,20 @@ export function Login({ callbackURL }: LoginProps) {
           value={password}
           onChange={e => setPassword(e.target.value)}
         />
-        <AuthButton isLoading={isLoading} loadingText={t("Logging in...")}>
+        {turnstileEnabled && (
+          <Turnstile
+            key={turnstileResetKey}
+            onSuccess={setTurnstileToken}
+            onError={() => setTurnstileToken("")}
+            onExpire={() => setTurnstileToken("")}
+            className="flex justify-center"
+          />
+        )}
+        <AuthButton
+          isLoading={isLoading}
+          loadingText={t("Logging in...")}
+          disabled={isLoading || turnstilePending || (turnstileEnabled && !turnstileToken)}
+        >
           {t("Login to Accept Invitation")}
         </AuthButton>
         <AuthError error={error} />

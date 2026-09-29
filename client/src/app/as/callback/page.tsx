@@ -1,5 +1,7 @@
 "use client";
 
+import { useTurnstile } from "@/hooks/useTurnstile";
+
 import { AuthButton } from "@/components/auth/AuthButton";
 import { AuthError } from "@/components/auth/AuthError";
 import { AuthInput } from "@/components/auth/AuthInput";
@@ -16,7 +18,6 @@ import { addSite } from "../../../api/admin/endpoints";
 import { RybbitTextLogo } from "../../../components/RybbitLogo";
 import { useSetPageTitle } from "../../../hooks/useSetPageTitle";
 import { authClient } from "../../../lib/auth";
-import { IS_CLOUD } from "../../../lib/const";
 import { userStore } from "../../../lib/userStore";
 import { cn, isValidDomain, normalizeDomain } from "../../../lib/utils";
 
@@ -60,7 +61,8 @@ export default function AppSumoSignupPage() {
   // Step 1: Account creation
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [turnstileToken, setTurnstileToken] = useState<string>("");
+  const { turnstileToken, setTurnstileToken, turnstileResetKey, turnstileEnabled, turnstilePending, resetTurnstile } =
+    useTurnstile();
 
   // Step 2: Organization creation
   const [orgName, setOrgName] = useState("");
@@ -174,8 +176,7 @@ export default function AppSumoSignupPage() {
     setError("");
 
     try {
-      // Validate Turnstile token if in cloud mode
-      if (IS_CLOUD && !turnstileToken) {
+      if (turnstilePending || (turnstileEnabled && !turnstileToken)) {
         setError("Please complete the captcha verification");
         setIsLoading(false);
         return;
@@ -189,7 +190,7 @@ export default function AppSumoSignupPage() {
         },
         {
           onRequest: context => {
-            if (IS_CLOUD && turnstileToken) {
+            if (turnstileEnabled && turnstileToken) {
               context.headers.set("x-captcha-response", turnstileToken);
             }
           },
@@ -209,6 +210,7 @@ export default function AppSumoSignupPage() {
     } catch (error) {
       setError(String(error));
     } finally {
+      resetTurnstile();
       setIsLoading(false);
     }
   };
@@ -316,8 +318,9 @@ export default function AppSumoSignupPage() {
                 onChange={e => setPassword(e.target.value)}
               />
 
-              {IS_CLOUD && (
+              {turnstileEnabled && (
                 <Turnstile
+                  key={turnstileResetKey}
                   onSuccess={token => setTurnstileToken(token)}
                   onError={() => setTurnstileToken("")}
                   onExpire={() => setTurnstileToken("")}
@@ -331,7 +334,7 @@ export default function AppSumoSignupPage() {
                 onClick={handleAccountSubmit}
                 type="button"
                 className="mt-6 transition-all duration-300 h-11"
-                disabled={IS_CLOUD ? !turnstileToken || isLoading : isLoading}
+                disabled={isLoading || turnstilePending || (turnstileEnabled && !turnstileToken)}
               >
                 Continue
                 <ArrowRight className="ml-2 h-4 w-4" />

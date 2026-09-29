@@ -1,6 +1,9 @@
 import dotenv from "dotenv";
+import { getTurnstileConfig } from "./turnstile.js";
 
 dotenv.config();
+
+export const TURNSTILE_CONFIG = getTurnstileConfig(process.env);
 
 export const IS_CLOUD = process.env.CLOUD === "true";
 export const DEPLOYMENT = process.env.DEPLOYMENT;

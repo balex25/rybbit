@@ -1,5 +1,7 @@
 "use client";
 
+import { useTurnstile } from "@/hooks/useTurnstile";
+
 import { AuthButton } from "@/components/auth/AuthButton";
 import { AuthError } from "@/components/auth/AuthError";
 import { AuthInput } from "@/components/auth/AuthInput";
@@ -27,7 +29,8 @@ function LoginPage() {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>();
-  const [turnstileToken, setTurnstileToken] = useState<string>("");
+  const { turnstileToken, setTurnstileToken, turnstileResetKey, turnstileEnabled, turnstilePending, resetTurnstile } =
+    useTurnstile();
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -36,8 +39,7 @@ function LoginPage() {
 
     setError("");
 
-    // Validate Turnstile token if in cloud mode and production
-    if (IS_CLOUD && process.env.NODE_ENV === "production" && !turnstileToken) {
+    if (turnstilePending || (turnstileEnabled && !turnstileToken)) {
       setError(t("Please complete the captcha verification"));
       setIsLoading(false);
       return;
@@ -51,7 +53,7 @@ function LoginPage() {
         },
         {
           onRequest: context => {
-            if (IS_CLOUD && process.env.NODE_ENV === "production" && turnstileToken) {
+            if (turnstileEnabled && turnstileToken) {
               context.headers.set("x-captcha-response", turnstileToken);
             }
           },
@@ -70,10 +72,9 @@ function LoginPage() {
     } catch (error) {
       setError(String(error));
     }
+    resetTurnstile();
     setIsLoading(false);
   };
-
-  const turnstileEnabled = IS_CLOUD && process.env.NODE_ENV === "production";
 
   return (
     <div className="flex h-dvh w-full">
@@ -114,6 +115,7 @@ function LoginPage() {
 
                 {turnstileEnabled && (
                   <Turnstile
+                    key={turnstileResetKey}
                     onSuccess={token => setTurnstileToken(token)}
                     onError={() => setTurnstileToken("")}
                     onExpire={() => setTurnstileToken("")}
@@ -124,7 +126,7 @@ function LoginPage() {
                 <AuthButton
                   isLoading={isLoading}
                   loadingText={t("Logging in...")}
-                  disabled={turnstileEnabled ? !turnstileToken || isLoading : isLoading}
+                  disabled={isLoading || turnstilePending || (turnstileEnabled && !turnstileToken)}
                 >
                   {t("Login")}
                 </AuthButton>

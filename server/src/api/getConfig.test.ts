@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // vi.mock is hoisted above every top-level statement, so the factory cannot
 // close over a plain `const`. vi.hoisted lifts the fixture with it.
 const mockConst = vi.hoisted(() => ({
+  TURNSTILE_CONFIG: null as { siteKey: string; secretKey: string } | null,
   DISABLE_SIGNUP: false,
   MAPBOX_TOKEN: "mapbox-token",
   LITE_DASHBOARD: false,
@@ -37,6 +38,7 @@ async function callGetConfig() {
 
 describe("getConfig", () => {
   beforeEach(() => {
+    mockConst.TURNSTILE_CONFIG = null;
     mockConst.GOOGLE_CLIENT_ID = undefined;
     mockConst.GOOGLE_CLIENT_SECRET = undefined;
   });
@@ -67,6 +69,18 @@ describe("getConfig", () => {
     const serialized = JSON.stringify(await callGetConfig());
     expect(serialized).not.toContain(CLIENT_ID_SENTINEL);
     expect(serialized).not.toContain(CLIENT_SECRET_SENTINEL);
+  });
+
+  it("returns no site key when CAPTCHA is disabled", async () => {
+    expect(await callGetConfig()).toMatchObject({ turnstileSiteKey: null });
+  });
+
+  it("exposes the runtime public key without exposing the CAPTCHA secret", async () => {
+    mockConst.TURNSTILE_CONFIG = { siteKey: "public-site-key", secretKey: "private-turnstile-secret" };
+    const payload = await callGetConfig();
+    expect(payload.turnstileSiteKey).toBe("public-site-key");
+    expect(JSON.stringify(payload)).not.toContain("private-turnstile-secret");
+    expect(payload).not.toHaveProperty("secretKey");
   });
 
   it("still returns the pre-existing config fields", async () => {

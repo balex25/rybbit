@@ -1,5 +1,7 @@
 "use client";
 
+import { useTurnstile } from "@/hooks/useTurnstile";
+
 import { AuthError } from "@/components/auth/AuthError";
 import { CheckoutModal } from "@/components/subscription/components/CheckoutModal";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,7 +33,9 @@ function SignupPageContent() {
 
   const maxStep = IS_CLOUD ? 3 : 2;
   const [stepParam, setStepParam] = useQueryState("step", parseAsInteger);
-  const [currentStep, setCurrentStepRaw] = useState(stepParam && stepParam >= 1 && stepParam <= maxStep ? stepParam : 1);
+  const [currentStep, setCurrentStepRaw] = useState(
+    stepParam && stepParam >= 1 && stepParam <= maxStep ? stepParam : 1
+  );
 
   // Wrap setCurrentStep to also update the URL param
   const setCurrentStep = (step: number) => {
@@ -45,7 +49,8 @@ function SignupPageContent() {
   // Step 1: Account creation
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [turnstileToken, setTurnstileToken] = useState<string>("");
+  const { turnstileToken, setTurnstileToken, turnstileResetKey, turnstileEnabled, turnstilePending, resetTurnstile } =
+    useTurnstile();
 
   // Plan selection (cloud step 2)
   const [eventLimitIndex, setEventLimitIndex] = useState(0);
@@ -76,7 +81,7 @@ function SignupPageContent() {
     setError("");
 
     try {
-      if (IS_CLOUD && !turnstileToken) {
+      if (turnstilePending || (turnstileEnabled && !turnstileToken)) {
         setError(t("Please complete the captcha verification"));
         setIsLoading(false);
         return;
@@ -90,7 +95,7 @@ function SignupPageContent() {
         },
         {
           onRequest: context => {
-            if (IS_CLOUD && turnstileToken) {
+            if (turnstileEnabled && turnstileToken) {
               context.headers.set("x-captcha-response", turnstileToken);
             }
           },
@@ -108,6 +113,7 @@ function SignupPageContent() {
     } catch (error) {
       setError(String(error));
     } finally {
+      resetTurnstile();
       setIsLoading(false);
     }
   };
@@ -176,11 +182,7 @@ function SignupPageContent() {
       const eventLimit = EVENT_TIERS[eventLimitIndex];
       if (eventLimit === "Custom") return;
 
-      const selectedTierPrice = findPriceForTier(
-        eventLimit,
-        isAnnual ? "year" : "month",
-        selectedPlan
-      );
+      const selectedTierPrice = findPriceForTier(eventLimit, isAnnual ? "year" : "month", selectedPlan);
 
       if (!selectedTierPrice) {
         setError("Could not find a matching plan. Please try a different selection.");
@@ -219,14 +221,14 @@ function SignupPageContent() {
 
   const steps = IS_CLOUD
     ? [
-      { step: 1, label: t("Account") },
-      { step: 2, label: t("Add site") },
-      { step: 3, label: t("Pick plan") },
-    ]
+        { step: 1, label: t("Account") },
+        { step: 2, label: t("Add site") },
+        { step: 3, label: t("Pick plan") },
+      ]
     : [
-      { step: 1, label: t("Account") },
-      { step: 2, label: t("Add site") },
-    ];
+        { step: 1, label: t("Account") },
+        { step: 2, label: t("Add site") },
+      ];
 
   const renderStepContent = () => {
     switch (currentStep) {
@@ -239,6 +241,7 @@ function SignupPageContent() {
             setPassword={setPassword}
             turnstileToken={turnstileToken}
             setTurnstileToken={setTurnstileToken}
+            turnstileResetKey={turnstileResetKey}
             isLoading={isLoading}
             onSubmit={handleAccountSubmit}
             setError={setError}
@@ -391,7 +394,7 @@ function SignupPageContent() {
         <CheckoutModal
           clientSecret={checkoutClientSecret}
           open={!!checkoutClientSecret}
-          onOpenChange={(open) => {
+          onOpenChange={open => {
             if (!open) setCheckoutClientSecret(null);
           }}
         />

@@ -6,13 +6,14 @@ import { ArrowRight } from "lucide-react";
 import { useExtracted } from "next-intl";
 import Link from "next/link";
 
-import { IS_CLOUD } from "../../../lib/const";
+import { useConfigs } from "@/lib/configs";
 
 interface AccountStepProps {
   email: string;
   setEmail: (v: string) => void;
   password: string;
   setPassword: (v: string) => void;
+  turnstileResetKey: number;
   turnstileToken: string;
   setTurnstileToken: (v: string) => void;
   isLoading: boolean;
@@ -28,6 +29,7 @@ export function AccountStep({
   setEmail,
   password,
   setPassword,
+  turnstileResetKey,
   turnstileToken,
   setTurnstileToken,
   isLoading,
@@ -37,6 +39,8 @@ export function AccountStep({
   loginHref = "/login",
 }: AccountStepProps) {
   const t = useExtracted();
+  const { configs, isLoading: isLoadingConfigs, error } = useConfigs();
+  const turnstileEnabled = Boolean(configs?.turnstileSiteKey);
 
   return (
     <div>
@@ -61,8 +65,9 @@ export function AccountStep({
           value={password}
           onChange={e => setPassword(e.target.value)}
         />
-        {IS_CLOUD && (
+        {turnstileEnabled && (
           <Turnstile
+            key={turnstileResetKey}
             onSuccess={token => setTurnstileToken(token)}
             onError={() => setTurnstileToken("")}
             onExpire={() => setTurnstileToken("")}
@@ -75,7 +80,9 @@ export function AccountStep({
           onClick={onSubmit}
           type="button"
           className="mt-6 transition-all duration-300 h-11"
-          disabled={IS_CLOUD ? !turnstileToken || isLoading : isLoading}
+          disabled={
+            isLoading || isLoadingConfigs || Boolean(error) || !configs || (turnstileEnabled && !turnstileToken)
+          }
         >
           {t("Continue")}
           <ArrowRight className="ml-2 h-4 w-4" />

@@ -1,5 +1,7 @@
 "use client";
 
+import { useTurnstile } from "@/hooks/useTurnstile";
+
 import { AuthError } from "@/components/auth/AuthError";
 import { CheckoutModal } from "@/components/subscription/components/CheckoutModal";
 import { Button } from "@/components/ui/button";
@@ -73,7 +75,8 @@ export function ClaimSiteDialog({
   // Account step
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [turnstileToken, setTurnstileToken] = useState("");
+  const { turnstileToken, setTurnstileToken, turnstileResetKey, turnstileEnabled, turnstilePending, resetTurnstile } =
+    useTurnstile();
 
   // Plan step (cloud)
   const [eventLimitIndex, setEventLimitIndex] = useState(0);
@@ -146,7 +149,7 @@ export function ClaimSiteDialog({
     setError("");
 
     try {
-      if (IS_CLOUD && !turnstileToken) {
+      if (turnstilePending || (turnstileEnabled && !turnstileToken)) {
         setError(t("Please complete the captcha verification"));
         return;
       }
@@ -155,7 +158,7 @@ export function ClaimSiteDialog({
         { email, name: email.split("@")[0], password },
         {
           onRequest: context => {
-            if (IS_CLOUD && turnstileToken) {
+            if (turnstileEnabled && turnstileToken) {
               context.headers.set("x-captcha-response", turnstileToken);
             }
           },
@@ -176,6 +179,7 @@ export function ClaimSiteDialog({
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
+      resetTurnstile();
       setIsLoading(false);
     }
   };
@@ -318,6 +322,7 @@ export function ClaimSiteDialog({
         setPassword={setPassword}
         turnstileToken={turnstileToken}
         setTurnstileToken={setTurnstileToken}
+        turnstileResetKey={turnstileResetKey}
         isLoading={isLoading}
         onSubmit={handleAccountSubmit}
         setError={setError}
