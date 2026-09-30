@@ -1,3 +1,4 @@
+import { BOT_PURPOSES as KNOWN_BOT_PURPOSES, CLOUDFLARE_BOT_BEHAVIORS } from "@rybbit/shared";
 import { FilterParameter } from "../types.js";
 import { getFilterStatement, getSqlParam } from "../utils/getFilterStatement.js";
 
@@ -18,6 +19,7 @@ export type BotDimensionKey =
   | FilterParameter
   | "asn_org"
   | "asn_provider"
+  | "bot_behavior"
   | "bot_category"
   | "bot_name"
   | "bot_operator"
@@ -44,6 +46,7 @@ const BOT_FILTER_PARAMETERS = new Set<FilterParameter>([
 ]);
 
 export const BOT_DIMENSIONS = new Set<BotDimensionKey>([
+  "bot_behavior",
   "browser",
   "browser_version",
   "operating_system",
@@ -78,16 +81,7 @@ const quoteList = (values: readonly string[]) => values.map(value => `'${value}'
 export const AI_PURPOSE_SQL_LIST = quoteList(AI_BOT_PURPOSES);
 export const AI_CRAWLER_PURPOSE_SQL_LIST = quoteList(AI_CRAWLER_PURPOSES);
 
-const BOT_PURPOSES = new Set<string>([
-  ...AI_BOT_PURPOSES,
-  "search",
-  "social_preview",
-  "seo",
-  "monitoring",
-  "security",
-  "scripted",
-  "headless",
-]);
+const BOT_PURPOSES = new Set<string>(KNOWN_BOT_PURPOSES);
 
 /**
  * Narrows a bot query to one purpose, or to the whole AI family with `"ai"`.
@@ -130,7 +124,15 @@ const BOT_ONLY_DIMENSIONS = new Set<BotDimensionKey>([
   "matched_ua_pattern",
 ]);
 
+const BOT_BEHAVIOR_SQL =
+  "multiIf(" +
+  Object.entries(CLOUDFLARE_BOT_BEHAVIORS)
+    .map(([behavior, { purposes }]) => `bot_purpose IN (${quoteList(purposes)}), '${behavior}'`)
+    .join(", ") +
+  ", '')";
+
 export const getBotSqlParam = (parameter: BotDimensionKey) => {
+  if (parameter === "bot_behavior") return BOT_BEHAVIOR_SQL;
   if (BOT_ONLY_DIMENSIONS.has(parameter)) {
     return parameter;
   }
@@ -146,4 +148,3 @@ export function getBotFilterStatement(filters?: string) {
     dualUserIdColumns: false,
   });
 }
-

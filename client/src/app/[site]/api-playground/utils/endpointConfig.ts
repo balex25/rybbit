@@ -1,3 +1,4 @@
+import { BOT_PURPOSES } from "@rybbit/shared";
 export type HttpMethod = "GET" | "POST" | "PUT" | "DELETE";
 
 type ParameterMetadata = {
@@ -458,6 +459,7 @@ export const endpointCategories: EndpointCategory[] = [
               "dimensions",
               "asn_org",
               "asn_provider",
+              "bot_behavior",
               "bot_category",
               "bot_name",
               "bot_operator",
@@ -911,20 +913,7 @@ export const parameterMetadata: Record<string, ParameterMetadata> = {
     label: "Purpose",
     type: "select",
     // "ai" and "ai_crawler" are groups; the rest are the stored values.
-    options: [
-      "ai",
-      "ai_crawler",
-      "ai_training",
-      "ai_search",
-      "ai_agent",
-      "search",
-      "social_preview",
-      "seo",
-      "monitoring",
-      "security",
-      "scripted",
-      "headless",
-    ],
+    options: ["ai", "ai_crawler", ...BOT_PURPOSES],
   },
   mode: {
     label: "Mode",

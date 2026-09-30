@@ -1,3 +1,4 @@
+import { BOT_PURPOSES, CLOUDFLARE_BOT_BEHAVIORS } from "@rybbit/shared";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../../db/postgres/postgres.js", () => ({
@@ -6,6 +7,7 @@ vi.mock("../../../db/postgres/postgres.js", () => ({
 }));
 
 import {
+  BOT_DIMENSIONS,
   buildStringFilterCondition,
   getBotFilterStatement,
   getBotLayerStatement,
@@ -289,7 +291,6 @@ describe("getBotFilterStatement", () => {
   });
 });
 
-
 describe("getBotPurposeStatement", () => {
   it("returns nothing when no purpose is selected", () => {
     expect(getBotPurposeStatement()).toBe("");
@@ -317,5 +318,28 @@ describe("getBotPurposeStatement", () => {
     // must produce no clause at all.
     expect(getBotPurposeStatement("'; DROP TABLE bot_events; --")).toBe("");
     expect(getBotPurposeStatement("nonsense")).toBe("");
+  });
+});
+
+describe("directory taxonomy queries", () => {
+  it.each(BOT_PURPOSES)("allows the stored purpose %s through the SQL allowlist", purpose => {
+    expect(getBotPurposeStatement(purpose)).toBe("AND bot_purpose = '" + purpose + "'");
+  });
+
+  it("groups historical purposes into current categories without a schema change", () => {
+    expect(BOT_DIMENSIONS.has("bot_behavior")).toBe(true);
+    const expression = getBotSqlParam("bot_behavior");
+    expect(expression).toContain("bot_purpose IN ('search', 'ai_search'), 'search'");
+    expect(expression).toContain(
+      "bot_purpose IN ('data_collection', 'academic_research', 'archiver', 'aggregator', 'social_marketing'), 'data_collection'"
+    );
+    expect(expression).toContain("bot_purpose IN ('monitoring', 'webhooks'), 'monitoring'");
+    expect(expression).toContain("bot_purpose IN ('scripted', 'headless', 'unknown'), 'other'");
+    expect(expression).toMatch(/, ''\)$/);
+  });
+
+  it("covers every purpose exactly once in the behavior grouping", () => {
+    const purposes = Object.values(CLOUDFLARE_BOT_BEHAVIORS).flatMap(group => group.purposes);
+    expect(purposes.sort()).toEqual([...BOT_PURPOSES].sort());
   });
 });

@@ -2,18 +2,9 @@
 
 import { truncateString } from "../../../../../lib/utils";
 import { BotSectionTabs, type BotSectionTab } from "../BotSectionTabs";
-import { formatBotPurpose } from "../ai/aiLabels";
+import { formatBotBehavior, formatBotCategory, formatBotPurpose } from "../ai/aiLabels";
 
-type Tab = "bots" | "operators" | "purposes" | "asn_orgs" | "bot_categories" | "ua_patterns";
-
-function formatBotCategory(value: string) {
-  if (!value) return "Uncategorized";
-  return value
-    .split(/[_-]/)
-    .filter(Boolean)
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-}
+type Tab = "bots" | "operators" | "purposes" | "asn_orgs" | "bot_behaviors" | "bot_categories" | "ua_patterns";
 
 export function BotMetadata() {
   const tabs: BotSectionTab<Tab>[] = [
@@ -69,11 +60,23 @@ export function BotMetadata() {
       },
     },
     {
-      value: "bot_categories",
+      value: "bot_behaviors",
       label: "Categories",
       section: {
-        dimension: "bot_category",
+        dimension: "bot_behavior",
         title: "Bot Categories",
+        getValue: item => item.value,
+        getKey: item => item.value || "unclassified",
+        getLabel: item => formatBotBehavior(item.value),
+        filterable: false,
+      },
+    },
+    {
+      value: "bot_categories",
+      label: "Families",
+      section: {
+        dimension: "bot_category",
+        title: "Bot Families",
         getValue: item => item.value,
         getKey: item => item.value || "uncategorized",
         getLabel: item => formatBotCategory(item.value),

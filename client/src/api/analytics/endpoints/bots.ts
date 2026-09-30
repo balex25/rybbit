@@ -7,6 +7,7 @@ export type BotDimensionKey =
   | FilterParameter
   | "asn_org"
   | "asn_provider"
+  | "bot_behavior"
   | "bot_category"
   | "bot_name"
   | "bot_operator"
@@ -19,17 +20,7 @@ export type BotDimensionKey =
  * training corpus, an answer engine indexing for retrieval, and a fetch a
  * person asked for a moment ago.
  */
-export type BotPurpose =
-  | "ai_training"
-  | "ai_search"
-  | "ai_agent"
-  | "search"
-  | "social_preview"
-  | "seo"
-  | "monitoring"
-  | "security"
-  | "scripted"
-  | "headless";
+export type { BotPurpose } from "@rybbit/shared";
 
 export type GetBotOverviewResponse = Record<BotLayerKey, number> & {
   bot_requests: number;

@@ -103,7 +103,8 @@ describe("checkBotBlocking", () => {
       trustedServerSideIngestion: true,
       payload: {
         ...basePayload,
-        userAgent: "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; GPTBot/1.2; +https://openai.com/gptbot",
+        userAgent:
+          "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; GPTBot/1.2; +https://openai.com/gptbot",
       },
     });
 
@@ -123,6 +124,21 @@ describe("checkBotBlocking", () => {
         asnProvider: "",
       },
     });
+  });
+
+  it.each([
+    ["bingbot/2.0", "bingbot", "search"],
+    ["AdsBot-Google", "AdsBot-Google", "advertising"],
+    ["Feedly/1.0", "Feedly", "feed_fetching"],
+    ["MistralAI-Index/1.0", "MistralAI-Index", "ai_search"],
+  ])("keeps directory identity on Worker ingestion: %s", async (userAgent, botName, botPurpose) => {
+    const result = await checkBotBlocking({
+      headers: {},
+      blockBots: true,
+      trustedServerSideIngestion: true,
+      payload: { ...basePayload, userAgent },
+    });
+    expect(result).toMatchObject({ isBot: true, eventProperties: { botName, botPurpose } });
   });
 
   it("leaves enforcement to blockBots for trusted server-side ingestion", async () => {

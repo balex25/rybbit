@@ -14,40 +14,9 @@
  * substrings last); preserve it on sync.
  */
 
-export type BotCategory =
-  | "search" // search engine crawlers (Googlebot, Bingbot, DuckDuckBot, etc.)
-  | "ai" // AI training / retrieval / agent crawlers
-  | "social" // social link-preview bots (facebookexternalhit, Twitterbot, Slackbot)
-  | "monitoring" // uptime / synthetic / performance monitoring
-  | "seo" // SEO crawlers (Ahrefs, SEMrush, Moz, Nutch, etc.)
-  | "security" // security scanners (Burp, ClamAV, etc.)
-  | "framework" // HTTP libraries / scripting clients (curl, python-requests, etc.)
-  | "headless" // headless browsers and browser automation
-  | "generic"; // matched a bot-ish pattern but uncategorized
+import type { BotCategory, BotPurpose } from "@rybbit/shared";
 
-/**
- * What the bot is *for*. `category` says which family a pattern belongs to;
- * `purpose` says what the operator does with the fetch, which is the
- * distinction site owners actually care about — a training crawler building a
- * corpus, an answer engine indexing for retrieval, and a human asking an agent
- * to open this page right now are three very different visitors that all share
- * `category: "ai"`.
- *
- * Purpose is additive: `category` is what is persisted historically and what
- * the existing Categories tab reads, so it keeps its meaning unchanged.
- */
-export type BotPurpose =
-  | "ai_training" // corpus collection for model training
-  | "ai_search" // indexing for an AI answer engine
-  | "ai_agent" // a human asked an AI to fetch this page, right now
-  | "search" // classic search engine indexing
-  | "social_preview" // link unfurling
-  | "seo" // backlink / rank / site-audit crawlers
-  | "monitoring" // uptime, synthetic, performance
-  | "security" // scanners
-  | "scripted" // HTTP libraries and CLI clients
-  | "headless" // browser automation
-  | "unknown";
+export type { BotCategory, BotPurpose } from "@rybbit/shared";
 
 export interface BotPattern {
   /** Regex source string. Compiled with the `i` flag. */
@@ -262,12 +231,466 @@ export const BOT_PATTERNS: BotPattern[] = [
  * where it also wins the first-match race.
  */
 export const EXTRA_BOT_PATTERNS: BotPattern[] = [
+  // https://radar.cloudflare.com/bots/directory/youbot
+  // https://docs.censys.com/docs/opt-out-of-data-collection
+  // https://docs.github.com/en/webhooks/webhook-events-and-payloads
+  // https://help.sogou.com/spider.html
+  {
+    pattern: "(?:^|[\\s;(])YouBot(?=[/\\s;),]|$)",
+    category: "ai",
+    name: "YouBot",
+    operator: "You.com",
+    purpose: "ai_search",
+  },
+  {
+    pattern: "(?:^|[\\s;(])CensysInspect(?=[/\\s;),]|$)",
+    category: "security",
+    name: "CensysInspect",
+    operator: "Censys",
+    purpose: "security",
+  },
+  {
+    pattern: "(?:^|[\\s;(])GitHub-Hookshot(?=[/\\s;),]|$)",
+    category: "webhooks",
+    name: "GitHub-Hookshot",
+    operator: "GitHub",
+    purpose: "webhooks",
+  },
+  {
+    pattern: "(?:^|[\\s;(])Sogou web spider(?=[/\\s;),]|$)",
+    category: "search",
+    name: "Sogou web spider",
+    operator: "Sogou",
+    purpose: "search",
+  },
+  {
+    pattern: "(?:^|[\\s;(])Sogou inst spider(?=[/\\s;),]|$)",
+    category: "search",
+    name: "Sogou inst spider",
+    operator: "Sogou",
+    purpose: "search",
+  },
+
+  // AI additions: https://docs.mistral.ai/robots and https://allenai.org/crawler
+  {
+    pattern: "(?:^|[\\s;(])MistralAI-Training(?=[/\\s;),]|$)",
+    category: "ai",
+    name: "MistralAI-Training",
+    operator: "Mistral",
+    purpose: "ai_training",
+  },
+  {
+    pattern: "(?:^|[\\s;(])MistralAI-Index(?=[/\\s;),]|$)",
+    category: "ai",
+    name: "MistralAI-Index",
+    operator: "Mistral",
+    purpose: "ai_search",
+  },
+  {
+    pattern: "(?:^|[\\s;(])AI2Bot(?=[/\\s;),]|$)",
+    category: "ai",
+    name: "AI2Bot",
+    operator: "Allen Institute for AI",
+    purpose: "ai_training",
+  },
+
+  // Google HTTP crawler tokens (robots.txt-only control tokens are not inferred).
+  // https://developers.google.com/crawling/docs/crawlers-fetchers/google-common-crawlers
+  // https://developers.google.com/crawling/docs/crawlers-fetchers/google-special-case-crawlers
+  {
+    pattern: "(?:^|[\\s;(])Googlebot-Image(?=[/\\s;),]|$)",
+    category: "search",
+    name: "Googlebot-Image",
+    operator: "Google",
+    purpose: "search",
+  },
+  {
+    pattern: "(?:^|[\\s;(])Googlebot-Video(?=[/\\s;),]|$)",
+    category: "search",
+    name: "Googlebot-Video",
+    operator: "Google",
+    purpose: "search",
+  },
+  {
+    pattern: "(?:^|[\\s;(])Googlebot(?=[/\\s;),]|$)",
+    category: "search",
+    name: "Googlebot",
+    operator: "Google",
+    purpose: "search",
+  },
+  {
+    pattern: "(?:^|[\\s;(])Storebot-Google(?=[/\\s;),]|$)",
+    category: "search",
+    name: "Storebot-Google",
+    operator: "Google",
+    purpose: "search",
+  },
+  {
+    pattern: "(?:^|[\\s;(])Google-InspectionTool(?=[/\\s;),]|$)",
+    category: "monitoring",
+    name: "Google-InspectionTool",
+    operator: "Google",
+    purpose: "monitoring",
+  },
+  {
+    pattern: "(?:^|[\\s;(])GoogleOther-Image(?=[/\\s;),]|$)",
+    category: "generic",
+    name: "GoogleOther-Image",
+    operator: "Google",
+    purpose: "unknown",
+  },
+  {
+    pattern: "(?:^|[\\s;(])GoogleOther-Video(?=[/\\s;),]|$)",
+    category: "generic",
+    name: "GoogleOther-Video",
+    operator: "Google",
+    purpose: "unknown",
+  },
+  {
+    pattern: "(?:^|[\\s;(])GoogleOther(?=[/\\s;),]|$)",
+    category: "generic",
+    name: "GoogleOther",
+    operator: "Google",
+    purpose: "unknown",
+  },
+  {
+    pattern: "(?:^|[\\s;(])Google-CloudVertexBot(?=[/\\s;),]|$)",
+    category: "ai",
+    name: "Google-CloudVertexBot",
+    operator: "Google",
+    purpose: "ai_search",
+  },
+  {
+    pattern: "(?:^|[\\s;(])AdsBot-Google-Mobile(?=[/\\s;),]|$)",
+    category: "advertising",
+    name: "AdsBot-Google-Mobile",
+    operator: "Google",
+    purpose: "advertising",
+  },
+  {
+    pattern: "(?:^|[\\s;(])AdsBot-Google(?=[/\\s;),]|$)",
+    category: "advertising",
+    name: "AdsBot-Google",
+    operator: "Google",
+    purpose: "advertising",
+  },
+  {
+    pattern: "(?:^|[\\s;(])Mediapartners-Google(?=[/\\s;),]|$)",
+    category: "advertising",
+    name: "Mediapartners-Google",
+    operator: "Google",
+    purpose: "advertising",
+  },
+  {
+    pattern: "(?:^|[\\s;(])Google-Safety(?=[/\\s;),]|$)",
+    category: "security",
+    name: "Google-Safety",
+    operator: "Google",
+    purpose: "security",
+  },
+
+  // Search and preview identities: https://radar.cloudflare.com/bots/directory
+  // Individual directory entries publish the HTTP User-Agent, not only the display name.
+  {
+    pattern: "(?:^|[\\s;(])bingbot(?=[/\\s;),]|$)",
+    category: "search",
+    name: "bingbot",
+    operator: "Microsoft",
+    purpose: "search",
+  },
+  {
+    pattern: "(?:^|[\\s;(])MicrosoftPreview(?=[/\\s;),]|$)",
+    category: "social",
+    name: "MicrosoftPreview",
+    operator: "Microsoft",
+    purpose: "social_preview",
+  },
+  {
+    pattern: "(?:^|[\\s;(])BingPreview(?=[/\\s;),]|$)",
+    category: "social",
+    name: "BingPreview",
+    operator: "Microsoft",
+    purpose: "social_preview",
+  },
+  {
+    pattern: "(?:^|[\\s;(])adidxbot(?=[/\\s;),]|$)",
+    category: "advertising",
+    name: "adidxbot",
+    operator: "Microsoft",
+    purpose: "advertising",
+  },
+  {
+    pattern: "(?:^|[\\s;(])Applebot(?=[/\\s;),]|$)",
+    category: "search",
+    name: "Applebot",
+    operator: "Apple",
+    purpose: "search",
+  },
+  {
+    pattern: "(?:^|[\\s;(])Baiduspider(?=[/\\s;),]|$)",
+    category: "search",
+    name: "Baiduspider",
+    operator: "Baidu",
+    purpose: "search",
+  },
+  {
+    pattern: "(?:^|[\\s;(])PetalBot(?=[/\\s;),]|$)",
+    category: "search",
+    name: "PetalBot",
+    operator: "Huawei",
+    purpose: "search",
+  },
+  {
+    pattern: "(?:^|[\\s;(])Bravebot(?=[/\\s;),]|$)",
+    category: "search",
+    name: "Bravebot",
+    operator: "Brave",
+    purpose: "search",
+  },
+  {
+    pattern: "(?:^|[\\s;(])MojeekBot(?=[/\\s;),]|$)",
+    category: "search",
+    name: "MojeekBot",
+    operator: "Mojeek",
+    purpose: "search",
+  },
+  {
+    pattern: "(?:^|[\\s;(])SeekportBot(?=[/\\s;),]|$)",
+    category: "search",
+    name: "SeekportBot",
+    operator: "SISTRIX",
+    purpose: "search",
+  },
+  {
+    pattern: "(?:^|[\\s;(])DuckDuckBot(?=[/\\s;),]|$)",
+    category: "search",
+    name: "DuckDuckBot",
+    operator: "DuckDuckGo",
+    purpose: "search",
+  },
+  {
+    pattern: "(?:^|[\\s;(])DuckDuckGo-Favicons-Bot(?=[/\\s;),]|$)",
+    category: "search",
+    name: "DuckDuckGo-Favicons-Bot",
+    operator: "DuckDuckGo",
+    purpose: "search",
+  },
+
+  // https://www.yandex.com/support/webmaster/en/robot-workings/check-yandex-robots
+  {
+    pattern: "(?:^|[\\s;(])YandexImages(?=[/\\s;),]|$)",
+    category: "search",
+    name: "YandexImages",
+    operator: "Yandex",
+    purpose: "search",
+  },
+  {
+    pattern: "(?:^|[\\s;(])YandexMedia(?=[/\\s;),]|$)",
+    category: "search",
+    name: "YandexMedia",
+    operator: "Yandex",
+    purpose: "search",
+  },
+  {
+    pattern: "(?:^|[\\s;(])YandexMobileBot(?=[/\\s;),]|$)",
+    category: "search",
+    name: "YandexMobileBot",
+    operator: "Yandex",
+    purpose: "search",
+  },
+  {
+    pattern: "(?:^|[\\s;(])YandexMetrika(?=[/\\s;),]|$)",
+    category: "monitoring",
+    name: "YandexMetrika",
+    operator: "Yandex",
+    purpose: "monitoring",
+  },
+
+  // https://searchadvisor.naver.com/guide/seo-basic-firewall
+  {
+    pattern: "(?:^|[\\s;(])Yeti(?=[/\\s;),]|$)",
+    category: "search",
+    name: "Yeti",
+    operator: "Naver",
+    purpose: "search",
+  },
+  {
+    pattern: "(?:^|[\\s;(])Blueno(?=[/\\s;),]|$)",
+    category: "social",
+    name: "Blueno",
+    operator: "Naver",
+    purpose: "social_preview",
+  },
+  {
+    pattern: "(?:^|[\\s;(])Ads-Naver(?=[/\\s;),]|$)",
+    category: "advertising",
+    name: "Ads-Naver",
+    operator: "Naver",
+    purpose: "advertising",
+  },
+
+  // SEO identities: https://ahrefs.com/robot/ and https://www.semrush.com/bot/
+  // https://dataforseo.com/dataforseo-bot and https://www.babbar.tech/crawler
+  // https://radar.cloudflare.com/bots/directory/blexbot and /seobilitybot
+  {
+    pattern: "(?:^|[\\s;(])AhrefsSiteAudit(?=[/\\s;),]|$)",
+    category: "seo",
+    name: "AhrefsSiteAudit",
+    operator: "Ahrefs",
+    purpose: "seo",
+  },
+  {
+    pattern: "(?:^|[\\s;(])SiteAuditBot(?=[/\\s;),]|$)",
+    category: "seo",
+    name: "SiteAuditBot",
+    operator: "Semrush",
+    purpose: "seo",
+  },
+  {
+    pattern: "(?:^|[\\s;(])SplitSignalBot(?=[/\\s;),]|$)",
+    category: "seo",
+    name: "SplitSignalBot",
+    operator: "Semrush",
+    purpose: "seo",
+  },
+  {
+    pattern: "(?:^|[\\s;(])RyteBot(?=[/\\s;),]|$)",
+    category: "seo",
+    name: "RyteBot",
+    operator: "Semrush",
+    purpose: "seo",
+  },
+  {
+    pattern: "(?:^|[\\s;(])DataForSeoBot(?=[/\\s;),]|$)",
+    category: "seo",
+    name: "DataForSeoBot",
+    operator: "DataForSEO",
+    purpose: "seo",
+  },
+  {
+    pattern: "(?:^|[\\s;(])BLEXBot(?=[/\\s;),]|$)",
+    category: "seo",
+    name: "BLEXBot",
+    operator: "WebMeUp",
+    purpose: "seo",
+  },
+  {
+    pattern: "(?:^|[\\s;(])Barkrowler(?=[/\\s;),]|$)",
+    category: "seo",
+    name: "Barkrowler",
+    operator: "Babbar",
+    purpose: "seo",
+  },
+  {
+    pattern: "(?:^|[\\s;(])SeobilityBot(?=[/\\s;),]|$)",
+    category: "seo",
+    name: "SeobilityBot",
+    operator: "Seobility",
+    purpose: "seo",
+  },
+
+  // Named services precede generic HeadlessChrome and HTTP-library rules.
+  // https://radar.cloudflare.com/bots/directory/gtmetrix and /uptrends
+  // https://radar.cloudflare.com/bots/directory/accessible-web-bot
+  // https://api.slack.com/robots
+  {
+    pattern: "(?:^|[\\s;(])GTmetrix(?=[/\\s;),]|$)",
+    category: "monitoring",
+    name: "GTmetrix",
+    operator: "GTmetrix",
+    purpose: "monitoring",
+  },
+  {
+    pattern: "(?:^|[\\s;(])uptrends(?=[/\\s;),]|$)",
+    category: "monitoring",
+    name: "uptrends",
+    operator: "Uptrends",
+    purpose: "monitoring",
+  },
+  {
+    pattern: "(?:^|[\\s;(])AccessibleWebBot(?=[/\\s;),]|$)",
+    category: "accessibility",
+    name: "AccessibleWebBot",
+    operator: "Accessible Web",
+    purpose: "accessibility",
+  },
+  {
+    pattern: "(?:^|[\\s;(])Slack-ImgProxy(?=[/\\s;),]|$)",
+    category: "social",
+    name: "Slack-ImgProxy",
+    operator: "Slack",
+    purpose: "social_preview",
+  },
+
+  // Feed readers and archives have their own purposes instead of generic bot labels.
+  // https://radar.cloudflare.com/bots/directory/feedly and /archive-org-bot
+  // Feedly must precede FeedFetcher-Google, which appears in its compatibility comment.
+  {
+    pattern: "(?:^|[\\s;(])Feedly(?=[/\\s;),]|$)",
+    category: "feed_fetching",
+    name: "Feedly",
+    operator: "Feedly",
+    purpose: "feed_fetching",
+  },
+  {
+    pattern: "(?:^|[\\s;(])FeedFetcher-Google(?=[/\\s;),]|$)",
+    category: "feed_fetching",
+    name: "FeedFetcher-Google",
+    operator: "Google",
+    purpose: "feed_fetching",
+  },
+  {
+    pattern: "(?:^|[\\s;(])archive\\.org_bot(?=[/\\s;),]|$)",
+    category: "archiver",
+    name: "archive.org_bot",
+    operator: "Internet Archive",
+    purpose: "archiver",
+  },
+  {
+    pattern: "(?:^|[\\s;(])special_archiver(?=[/\\s;),]|$)",
+    category: "archiver",
+    name: "special_archiver",
+    operator: "Internet Archive",
+    purpose: "archiver",
+  },
+
+  // https://radar.cloudflare.com/bots/directory/turnitinbot, /indeedjobbot, /magpiecrawler
+  {
+    pattern: "(?:^|[\\s;(])TurnitinBot(?=[/\\s;),]|$)",
+    category: "academic_research",
+    name: "TurnitinBot",
+    operator: "Turnitin",
+    purpose: "academic_research",
+  },
+  {
+    pattern: "(?:^|[\\s;(])IndeedJobBot(?=[/\\s;),]|$)",
+    category: "data_collection",
+    name: "IndeedJobBot",
+    operator: "Indeed",
+    purpose: "data_collection",
+  },
+  {
+    pattern: "(?:^|[\\s;(])magpie-crawler(?=[/\\s;),]|$)",
+    category: "social_marketing",
+    name: "magpie-crawler",
+    operator: "Brandwatch",
+    purpose: "social_marketing",
+  },
+
   // --- AI: training crawlers -------------------------------------------------
   // Fetch pages to build a corpus. They do not send anyone back to the site.
   { pattern: "\\bgptbot\\b", category: "ai", name: "GPTBot", operator: "OpenAI", purpose: "ai_training" },
   { pattern: "\\bclaudebot\\b", category: "ai", name: "ClaudeBot", operator: "Anthropic", purpose: "ai_training" },
   { pattern: "\\bccbot\\b", category: "ai", name: "CCBot", operator: "Common Crawl", purpose: "ai_training" },
-  { pattern: "\\bgoogle-extended\\b", category: "ai", name: "Google-Extended", operator: "Google", purpose: "ai_training" },
+  // Compatibility for literal reports only: Extended tokens are robots.txt controls,
+  // not separate HTTP crawlers. Never infer training from Googlebot or Applebot.
+  {
+    pattern: "\\bgoogle-extended\\b",
+    category: "ai",
+    name: "Google-Extended",
+    operator: "Google",
+    purpose: "ai_training",
+  },
   {
     pattern: "\\bapplebot-extended\\b",
     category: "ai",
@@ -307,7 +730,13 @@ export const EXTRA_BOT_PATTERNS: BotPattern[] = [
     operator: "Perplexity",
     purpose: "ai_search",
   },
-  { pattern: "\\bduckassistbot\\b", category: "ai", name: "DuckAssistBot", operator: "DuckDuckGo", purpose: "ai_search" },
+  {
+    pattern: "\\bduckassistbot\\b",
+    category: "ai",
+    name: "DuckAssistBot",
+    operator: "DuckDuckGo",
+    purpose: "ai_search",
+  },
   { pattern: "\\byouchat\\b", category: "ai", name: "YouChat", operator: "You.com", purpose: "ai_search" },
   { pattern: "\\bgrokbot\\b", category: "ai", name: "GrokBot", operator: "xAI", purpose: "ai_search" },
 
@@ -354,7 +783,6 @@ export const EXTRA_BOT_PATTERNS: BotPattern[] = [
 
   // Search crawlers whose names can be swallowed by generic "*bot*" rules
   { pattern: "yandexbot", category: "search", name: "YandexBot", operator: "Yandex", purpose: "search" },
-  { pattern: "duckduckgo", category: "search", name: "DuckDuckBot", operator: "DuckDuckGo", purpose: "search" },
   { pattern: "slurp", category: "search", name: "Yahoo! Slurp", operator: "Yahoo", purpose: "search" },
 
   // Social link previewers not caught by upstream
@@ -379,7 +807,13 @@ export const EXTRA_BOT_PATTERNS: BotPattern[] = [
     purpose: "social_preview",
   },
   { pattern: "redditbot", category: "social", name: "RedditBot", operator: "Reddit", purpose: "social_preview" },
-  { pattern: "pinterestbot", category: "social", name: "Pinterestbot", operator: "Pinterest", purpose: "social_preview" },
+  {
+    pattern: "pinterestbot",
+    category: "social",
+    name: "Pinterestbot",
+    operator: "Pinterest",
+    purpose: "social_preview",
+  },
   { pattern: "embedly", category: "social", name: "Embedly", operator: "Embedly", purpose: "social_preview" },
 
   // SEO crawlers commonly seen in the wild
@@ -410,7 +844,13 @@ export const EXTRA_BOT_PATTERNS: BotPattern[] = [
 
   // Monitoring services
   { pattern: "pingdom", category: "monitoring", name: "Pingdom", operator: "Pingdom", purpose: "monitoring" },
-  { pattern: "uptimerobot", category: "monitoring", name: "UptimeRobot", operator: "UptimeRobot", purpose: "monitoring" },
+  {
+    pattern: "uptimerobot",
+    category: "monitoring",
+    name: "UptimeRobot",
+    operator: "UptimeRobot",
+    purpose: "monitoring",
+  },
   { pattern: "datadog", category: "monitoring", name: "Datadog", operator: "Datadog", purpose: "monitoring" },
   { pattern: "newrelic", category: "monitoring", name: "New Relic", operator: "New Relic", purpose: "monitoring" },
   { pattern: "site24x7", category: "monitoring", name: "Site24x7", operator: "Site24x7", purpose: "monitoring" },
