@@ -9,3 +9,4 @@ export * from "./performance";
 export * from "./aiOperators";
 export * from "./annotations";
 export * from "./botTaxonomy";
+export * from "./permissions";

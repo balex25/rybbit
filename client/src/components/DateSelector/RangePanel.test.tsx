@@ -476,10 +476,16 @@ describe("RangePanel footer", () => {
 
 describe("RangePanel calendar", () => {
   it("does not let a future day be picked", () => {
-    const { container } = renderPanel({ mode: "day", day: new Date().toISOString().slice(0, 10) });
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-09-15T12:00:00Z"));
+    try {
+      const { container } = renderPanel({ mode: "day", day: "2026-09-15" });
 
-    const disabled = container.querySelectorAll("button[disabled][data-day]");
-    expect(disabled.length).toBeGreaterThan(0);
+      const disabled = container.querySelectorAll("button[disabled][data-day]");
+      expect(disabled.length).toBeGreaterThan(0);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("offers month and year dropdowns rather than only chevrons", () => {
