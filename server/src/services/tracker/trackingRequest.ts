@@ -41,7 +41,8 @@ export interface TrackingRequest {
   candidateIps: string[];
   /**
    * A bearer token with `ingest:write` scope for this Site let the payload
-   * override IP and user agent. Bot detection is skipped for these.
+   * override IP and user agent. Bot detection uses the reported user agent;
+   * browser and transport heuristics are skipped.
    */
   trustedServerSideIngestion: boolean;
   /** Request headers, for the layers that read beyond the user agent. */

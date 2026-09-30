@@ -127,6 +127,93 @@ describe("checkBotBlocking", () => {
   });
 
   it.each([
+    { reportedVisitorIp: "198.51.100.20", blockBots: true },
+    { reportedVisitorIp: "2001:db8::20", blockBots: false },
+  ])("enriches a trusted bot with visitor ASN metadata: %j", async ({ reportedVisitorIp, blockBots }) => {
+    const resolveAsn = vi.fn(() => ({ asn: 15169, organization: "Google LLC" }));
+    const result = await checkBotBlocking({
+      headers: {},
+      blockBots,
+      trustedServerSideIngestion: true,
+      reportedVisitorIp,
+      lookupAsn: resolveAsn,
+      payload: { ...basePayload, userAgent: "GPTBot/1.2" },
+    });
+
+    expect(resolveAsn).toHaveBeenCalledExactlyOnceWith(reportedVisitorIp);
+    expect(result).toMatchObject({
+      enforced: blockBots,
+      detections: [{ layer: "ua_pattern" }],
+      eventProperties: {
+        botAsn: 15169,
+        botAsnOrg: "Google LLC",
+        botOperator: "OpenAI",
+        detectedBotAsn: false,
+        asnProvider: "",
+      },
+    });
+    expect(result?.detections).toHaveLength(1);
+  });
+
+  it("does not attribute the reporting server's ASN when no visitor IP is supplied", async () => {
+    const resolveAsn = vi.fn(() => ({ asn: 13335, organization: "Cloudflare, Inc." }));
+    const result = await checkBotBlocking({
+      headers: { "cf-connecting-ip": basePayload.ipAddress },
+      blockBots: true,
+      trustedServerSideIngestion: true,
+      lookupAsn: resolveAsn,
+      payload: { ...basePayload, userAgent: "GPTBot/1.2" },
+    });
+
+    expect(resolveAsn).not.toHaveBeenCalled();
+    expect(result?.eventProperties).toMatchObject({ botAsn: undefined, botAsnOrg: "" });
+  });
+
+  it("leaves an unknown visitor ASN empty without falling back to the reporting server", async () => {
+    const resolveAsn = vi.fn(() => null);
+    const result = await checkBotBlocking({
+      headers: {},
+      blockBots: true,
+      trustedServerSideIngestion: true,
+      reportedVisitorIp: "198.51.100.20",
+      lookupAsn: resolveAsn,
+      payload: { ...basePayload, userAgent: "GPTBot/1.2" },
+    });
+
+    expect(resolveAsn).toHaveBeenCalledExactlyOnceWith("198.51.100.20");
+    expect(result?.eventProperties).toMatchObject({ botAsn: undefined, botAsnOrg: "" });
+  });
+
+  it("does not use visitor ASN enrichment to classify trusted human traffic as bots", async () => {
+    const resolveAsn = vi.fn(() => ({ asn: 16509, organization: "Amazon.com, Inc." }));
+    const result = await checkBotBlocking({
+      headers: {},
+      blockBots: true,
+      trustedServerSideIngestion: true,
+      reportedVisitorIp: "198.51.100.20",
+      lookupAsn: resolveAsn,
+      payload: { ...basePayload, userAgent: browserHeaders["user-agent"] },
+    });
+
+    expect(result).toBeNull();
+    expect(resolveAsn).not.toHaveBeenCalled();
+  });
+
+  it("ignores the reported visitor IP when ingestion is untrusted", async () => {
+    const resolveAsn = vi.fn(() => null);
+    await checkBotBlocking({
+      headers: browserHeaders,
+      blockBots: true,
+      trustedServerSideIngestion: false,
+      reportedVisitorIp: "198.51.100.20",
+      lookupAsn: resolveAsn,
+      payload: { ...basePayload, userAgent: "GPTBot/1.2" },
+    });
+
+    expect(resolveAsn).toHaveBeenCalledExactlyOnceWith(basePayload.ipAddress);
+  });
+
+  it.each([
     ["bingbot/2.0", "bingbot", "search"],
     ["AdsBot-Google", "AdsBot-Google", "advertising"],
     ["Feedly/1.0", "Feedly", "feed_fetching"],

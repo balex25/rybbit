@@ -255,6 +255,23 @@ describe("ingestEvent", () => {
     );
   });
 
+  it.each([
+    { trusted: true, reportedIp: "198.51.100.20", expectedIp: "198.51.100.20" },
+    { trusted: true, reportedIp: undefined, expectedIp: undefined },
+    { trusted: false, reportedIp: "198.51.100.20", expectedIp: undefined },
+  ])(
+    "passes only explicitly reported authenticated visitor IPs for ASN enrichment: %j",
+    async ({ trusted, reportedIp, expectedIp }) => {
+      const request = trackingRequest({ trustedServerSideIngestion: trusted });
+      request.payload.ip_address = reportedIp;
+      await ingestEvent(request);
+
+      expect(mocks.checkBotBlocking).toHaveBeenCalledWith(
+        expect.objectContaining({ reportedVisitorIp: expectedIp, lookupAsn })
+      );
+    }
+  );
+
   // Anomaly counters are namespaced by this id. Passing the incoming identifier
   // instead split one Site across two namespaces — the text id the UI emits and
   // the legacy numeric id still accepted — each seeing half the traffic.

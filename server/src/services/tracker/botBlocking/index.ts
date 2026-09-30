@@ -50,6 +50,8 @@ interface BotBlockingInput {
   headers: IncomingHttpHeaders;
   blockBots: boolean;
   trustedServerSideIngestion?: boolean;
+  /** Validated visitor IP explicitly supplied by authenticated ingestion; never a transport fallback. */
+  reportedVisitorIp?: string;
   /**
    * App/mobile site. The UA-pattern and header-heuristic layers are
    * browser-shaped and produce false positives for native SDK traffic, so they
@@ -178,11 +180,7 @@ function buildBotEventProperties(
   };
 }
 
-function getClientSignalResult(
-  payload: BotBlockingPayload,
-  userAgent: string,
-  hasReportableScreen: boolean
-) {
+function getClientSignalResult(payload: BotBlockingPayload, userAgent: string, hasReportableScreen: boolean) {
   const hasClientScore = typeof payload.clientBotScore === "number" && Number.isFinite(payload.clientBotScore);
   const hasClientMask = typeof payload.clientBotSignalMask === "number" && Number.isFinite(payload.clientBotSignalMask);
   const rawMask = hasClientMask ? payload.clientBotSignalMask! : 0;
@@ -251,7 +249,9 @@ function getClientSignalResult(
 function classifyTrustedIngestion(
   userAgent: string,
   blockBots: boolean,
-  clientSignalResult: ReturnType<typeof getClientSignalResult>
+  clientSignalResult: ReturnType<typeof getClientSignalResult>,
+  reportedVisitorIp: string | undefined,
+  asnLookup: AsnLookup
 ): BotDetectionResult | null {
   const uaClassification = classifyUA(userAgent);
   if (!uaClassification.isBot) {
@@ -276,9 +276,12 @@ function classifyTrustedIngestion(
     enforced: blockBots,
     message: "Bot detected using ua-pattern",
     detections,
-    // No ASN: the address belongs to the reporting server, not to the bot, so
-    // attributing it would be worse than leaving it empty.
-    eventProperties: buildBotEventProperties(detections, null, clientSignalResult),
+    // Enrich only an explicit visitor IP; the transport IP may belong to a Worker.
+    eventProperties: buildBotEventProperties(
+      detections,
+      reportedVisitorIp ? asnLookup(reportedVisitorIp) : null,
+      clientSignalResult
+    ),
   };
 }
 
@@ -286,6 +289,7 @@ export async function checkBotBlocking({
   headers,
   blockBots,
   trustedServerSideIngestion = false,
+  reportedVisitorIp,
   isMobileSite = false,
   payload,
   lookupAsn: asnLookup = lookupAsn,
@@ -303,9 +307,10 @@ export async function checkBotBlocking({
   // reports its own IP and user agent on someone else's behalf. Four of the
   // five layers are meaningless against it and several would convict it
   // outright: header heuristics read the reporting server's headers, client
-  // signals require a browser that never ran, the ASN belongs to whoever is
-  // doing the reporting, and rate anomaly would see one origin standing in for
-  // its entire audience.
+  // signals require a browser that never ran, and rate anomaly may see one
+  // origin standing in for its entire audience. ASN-based detection stays off;
+  // an explicit visitor IP may enrich a UA detection, but the reporting server's
+  // fallback address must never be attributed to that bot.
   //
   // The UA layer is the exception, and the only way Rybbit can see a crawler
   // that does not execute JavaScript. `POST /api/track` is the sole ingestion
@@ -320,7 +325,7 @@ export async function checkBotBlocking({
   // off used to get no evaluation at all, which left it with neither protection
   // nor any record of what it was receiving.
   if (trustedServerSideIngestion) {
-    return classifyTrustedIngestion(userAgent, blockBots, clientSignalResult);
+    return classifyTrustedIngestion(userAgent, blockBots, clientSignalResult, reportedVisitorIp, asnLookup);
   }
 
   const detections: BotBlockingDetection[] = [];
